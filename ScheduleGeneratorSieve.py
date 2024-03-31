@@ -2,20 +2,22 @@ import random
 import csv
 import logging
 import time
+import os 
 
 logging.basicConfig(level=logging.INFO)
 
+peoples_names = []
+days_of_week = []
 
-peoplesNames = ["Name1","Name2","Name3","Name4","Name5","Name6","Name7","Name8"]
-days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+max_made_calls_per_day = 1
+max_received_calls_per_day = 2
+max_made_calls_per_week = 0
+max_received_calls_per_week = 0
 
-MAX_MADE_CALLS_PER_DAY = 1
-MAX_MADE_CALLS_PER_WEEK = len(days_of_week)-1
 
-MAX_RECEIVED_CALLS_PER_DAY = 2
-MAX_RECEIVED_CALLS_PER_WEEK=len(days_of_week)-1
+MAX_ITERATIONS = 1000000
 
-people = {}
+
 
 class Person:
 
@@ -78,23 +80,31 @@ def createBlankSchedule():
 
 def createPeopleList():
     pList = {}
-    for p in peoplesNames:
+    for p in peoples_names:
         pList[p]=Person(p)
     return pList
 
+def create_directory_for_file(file_path):
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        print(f"Directory '{directory}' created successfully.")
+
 def output_schedule_to_csv(schedule, filename):
+    create_directory_for_file(filename)
+
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
         header = ['Caller/Receiver'] + days_of_week
         writer.writerow(header)
 
-        for person in peoplesNames:
+        for person in peoples_names:
             row = [person]
             for day in days_of_week:
                 row.append(schedule[day].get(person, ''))
             writer.writerow(row)
 
-def writeOutSchedule():
+def writeOutSchedule(schedule):
     for day in days_of_week:
         logging.debug(f"\n{day}:")
         for caller, receiver in schedule[day].items():
@@ -160,7 +170,7 @@ def checkEveryOneHasACallToday(schedule,day):
     a = list(schedule[day].keys())
     b = list(schedule[day].values())
     unique = list(set(a + b))
-    if len(unique) != len(peoplesNames):
+    if len(unique) != len(peoples_names):
         return False
     else:
         return True
@@ -202,17 +212,17 @@ def buildSchedule(schedule,people,c_list):
                 #if you are getting called from someone, you don't call them back in the same day
                 c_list[day] = filter_ReverseCallOptionForToday(c_list[day],day,caller,receiver)
 
-                if (caller.getMakingCallsCountDay(day) >= MAX_MADE_CALLS_PER_DAY):
+                if (caller.getMakingCallsCountDay(day) >= max_made_calls_per_day):
                     c_list[day] = filter_CallerFromToday(c_list[day],day,caller)
 
                 #if you've already recieved 2 calls today, you are no longer an option
-                if receiver.getReceivingCallsCountDay(day) >= MAX_RECEIVED_CALLS_PER_DAY:
+                if receiver.getReceivingCallsCountDay(day) >= max_received_calls_per_day:
                     c_list[day] = filter_alreadyGotCalledToday(c_list[day],day,receiver)
 
-                if (receiver.getReceivingCallsCount() >= MAX_RECEIVED_CALLS_PER_WEEK):
+                if (receiver.getReceivingCallsCount() >= max_received_calls_per_week):
                     c_list = filter_ReceiverFromWeek(c_list,receiver)
                     
-                if (caller.getMakingCallsCount() >= MAX_MADE_CALLS_PER_WEEK ):
+                if (caller.getMakingCallsCount() >= max_made_calls_per_week ):
                     c_list = filter_CallerFromWeek(c_list,caller)
             
         metGoals = bool(checkEveryOneHasACall(schedule)==len(days_of_week))
@@ -243,38 +253,50 @@ def filterExtraCalls(schedule,people,day):
                     people[mostInteractionsPerson].makingCallsDict[day]-=1
                     assignments+=1
 
-# Generate the schedule
-loopCount = 0
-fewestCalls = 9999
-smallestDelta = 9999 
-start = time.time()
-while(loopCount<2000000):
-        
-    c_list = createCombinationCallsDict(peoplesNames,days_of_week)
-    people = createPeopleList()
-    schedule = createBlankSchedule()
-    buildSchedule(schedule,people,c_list)
-    filterExtraCalls(schedule,people,c_list)
-    finishedDays = checkEveryOneHasACall(schedule)
-    if finishedDays==len(days_of_week):
-        
-        sumTotalCalls = getTotalCallsThisWeek(people)
-        currentDelta = getDeltaCallsThisWeek(people)
-        output_schedule_to_csv(schedule, f"calls-{sumTotalCalls}-delta-{currentDelta}.csv")
+def run(peepNames, daysofweek ):
 
-        if (sumTotalCalls<=fewestCalls or currentDelta<=smallestDelta ):
-                        
-            output_schedule_to_csv(schedule, f"calls-{sumTotalCalls}-delta-{currentDelta}.csv")
-
-            if (sumTotalCalls<=fewestCalls):
-                fewestCalls = sumTotalCalls
-                logging.info(f"schedule_output{loopCount} has {sumTotalCalls} total calls")
-            if (currentDelta<=smallestDelta):
-                smallestDelta = currentDelta
-                logging.info(f"schedule_output{loopCount} has {smallestDelta} delta size")
-                
+    global peoples_names,days_of_week ,max_made_calls_per_week,max_received_calls_per_week
+    peoples_names = peepNames
+    days_of_week = daysofweek
+    max_made_calls_per_week = len(days_of_week)-1
+    max_received_calls_per_week = len(days_of_week)-1
     
-    loopCount+=1
-    if loopCount % 1000 ==0:
-        end = time.time()
-        print(str(loopCount) + " -- " + str(round(end - start,2)))
+    # Generate the schedule
+    loopCount = 0
+    fewestCalls = 9999
+    smallestDelta = 9999 
+    start = time.time()
+    folderName =F"People{len(peoples_names)}-Days{len(days_of_week)}"
+    while(loopCount<MAX_ITERATIONS):
+            
+        c_list = createCombinationCallsDict(peoples_names,days_of_week)
+        people = createPeopleList()
+        schedule = createBlankSchedule()
+        buildSchedule(schedule,people,c_list)
+        filterExtraCalls(schedule,people,c_list)
+        finishedDays = checkEveryOneHasACall(schedule)
+        if finishedDays==len(days_of_week):
+            
+            sumTotalCalls = getTotalCallsThisWeek(people)
+            currentDelta = getDeltaCallsThisWeek(people)
+            #output_schedule_to_csv(schedule, f"{folderName}\calls-{sumTotalCalls}-delta-{currentDelta}.csv")
+
+            if (sumTotalCalls<=fewestCalls or currentDelta<=smallestDelta ):
+                            
+                output_schedule_to_csv(schedule, f"{folderName}\calls-{sumTotalCalls}-delta-{currentDelta}.csv")
+
+                if (sumTotalCalls<fewestCalls):
+                    fewestCalls = sumTotalCalls
+                    logging.info(f"schedule_output{loopCount} has {sumTotalCalls} total calls")
+                if (currentDelta<smallestDelta):
+                    smallestDelta = currentDelta
+                    logging.info(f"schedule_output{loopCount} has {smallestDelta} delta size")
+                    
+        
+        loopCount+=1
+        if loopCount % 10000 ==0:
+            end = time.time()
+            duration = round(end - start,2)
+            # time left = how many loop "chunks" multiplied by how long each "chunk" takes
+            timeLeft = ((MAX_ITERATIONS-loopCount)/loopCount)*duration/60
+            print(str(loopCount) + " -- minutes left:" + str(timeLeft))
