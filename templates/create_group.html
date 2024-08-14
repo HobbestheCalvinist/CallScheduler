@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Call Scheduling Service</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='mainpage.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Call Scheduling Service</h1>
+        <div class="form-group">
+            <label for="mycurrentgroupname">Group Name:</label>
+            <input type="text" id="groupname" required value="test">
+        </div>
+
+        <form class="form-container">
+            <div class="form-group">
+                <label>Select Days:</label>
+                <table>
+                    <tr>
+                        <td><input type="checkbox" name="days" value="Monday"> Monday</td>
+                        <td><input type="checkbox" name="days" value="Tuesday"> Tuesday</td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="days" value="Wednesday"> Wednesday</td>
+                        <td><input type="checkbox" name="days" value="Thursday"> Thursday</td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="days" value="Friday"> Friday</td>
+                        <td><input type="checkbox" name="days" value="Saturday"> Saturday</td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" name="days" value="Sunday"> Sunday</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="form-group button-group">
+                <button type="button" id="loadDays" onclick="LoadDays()">Load Days</button>
+                <button type="button" id="selectAll" onclick="SelectAllDays()">Select All</button>
+                <button type="button" id="saveDays" onclick="SaveDays()">Save Days</button>
+            </div>
+        </form>
+
+        <form id="callForm" class="form-container">
+            <div class="form-group">
+                <label for="firstName">First Name:</label>
+                <input type="text" id="firstName" required>
+            </div>
+            <div class="form-group">
+                <label for="lastName">Last Name:</label>
+                <input type="text" id="lastName" required>
+            </div>
+            <div class="form-group">
+                <label for="phoneNumber">Phone Number (optional):</label>
+                <input type="text" id="phoneNumber">
+            </div>
+            <div class="form-group button-group">
+                <button type="button" onclick="AddToCallList()">Add Person to Call List</button>
+                <button type="button" onclick="RemoveFromCallList()">Remove Person From Call List</button>
+                <button type="button" onclick="ImportCallListFromFile()">Import Call List</button>
+            </div>
+        </form>
+
+        <div class="form-group button-group">
+            <button type="button" onclick="DisplayCallList()">Display Call List</button>
+            <button type="button" onclick="generateCallSchedule()">Generate Call Schedule</button>
+        </div>
+
+        <ul id="CallersList" class="callers-list"></ul>
+        <ul id="generatedCallSchedule" class="call-schedule"></ul>
+    </div>
+</body>
+</html>
