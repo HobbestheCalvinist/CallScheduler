@@ -10,5 +10,9 @@ This call schedule is a python web app to "try" to build a selection of schedule
 
 # Installation / Running
 
-- Install Python 3.11
+- Install Python 3.12
+- Python create virtual environment (If using vscode - install python extension, control+shift+p, Python Create Environment)
 - Run pip install on the included requirements.txt (pip install -r /path/to/requirements.txt)
+
+
+

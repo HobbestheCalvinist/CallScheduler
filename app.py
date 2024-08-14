@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from models import db, Group, Contact, Call
+from collections import defaultdict
 from __init__ import create_app
 import os
 
@@ -13,7 +14,30 @@ if not os.path.exists('app.db'):
 
 @app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html')
+        # Query calls and related contact information
+    calls = db.session.query(Call).all()
+    contacts = db.session.query(Contact).all()
+
+    # Create a mapping for days of the week
+    days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    
+    # Create a map of caller_id to caller name
+    caller_map = {contact.id: contact.name for contact in contacts}
+    
+    # Create a nested dictionary for grid data
+    grid_data = defaultdict(lambda: defaultdict(list))
+
+    for call in calls:
+        day = call.day_of_week
+        caller = caller_map.get(call.caller_id)
+        receiver = caller_map.get(call.receiver_id)
+        grid_data[caller][day].append(receiver)
+
+    # Get unique callers for rows and days of week for columns
+    unique_callers = sorted(grid_data.keys())
+    unique_days = days_of_week
+
+    return render_template('index.html', grid_data=grid_data, unique_callers=unique_callers, unique_days=unique_days)
 
 @app.route('/create_group', methods=['POST'])
 def create_group():
