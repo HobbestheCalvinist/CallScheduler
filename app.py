@@ -1,13 +1,14 @@
 from flask import Flask, request, jsonify, render_template
-from models import db, Group, Contact, Call
+from data.models import db, Group, Contact, Call
 from collections import defaultdict
 from __init__ import create_app
 import os
 
 app = create_app()
+days_of_week = ['Day1', 'Day2', 'Day3', 'Day4', 'Day5', 'Day6', 'Day7']
 
 # Check if the database file exists
-if not os.path.exists('app.db'):
+if not os.path.exists('data\\app.db'):
     with app.app_context():
         db.create_all()
 
@@ -18,9 +19,6 @@ def index():
     calls = db.session.query(Call).all()
     contacts = db.session.query(Contact).all()
 
-    # Create a mapping for days of the week
-    days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    
     # Create a map of caller_id to caller name
     caller_map = {contact.id: contact.name for contact in contacts}
     
@@ -96,6 +94,47 @@ def get_calls_by_group():
             } for call in calls
         ])
     return jsonify({'message': 'Group not found'}), 404
+
+
+@app.route('/load_table', methods=['GET'])
+def load_table():
+    days = int(request.args.get('days'))
+    members = int(request.args.get('members'))
+
+    # Get the current group with the specified member count and day call count
+    group = db.session.query(Group).filter_by(memberCount=members, dayCallCount=days).first()
+
+    if not group:
+        return jsonify({'unique_days': [], 'unique_callers': [], 'grid_data': {}})
+
+    # Query calls and related contact information for the selected group
+    calls = db.session.query(Call).filter_by(group_id=group.id).all()
+    contacts = db.session.query(Contact).filter_by(group_id=group.id).all()
+
+    # Create a mapping for days of the week
+    days_of_week_mapped = days_of_week[:days]
+
+    # Create a map of caller_id to caller name
+    caller_map = {contact.id: contact.name for contact in contacts}
+
+    # Create a nested dictionary for grid data
+    grid_data = defaultdict(lambda: defaultdict(list))
+
+    for call in calls:
+        day = call.day_of_week
+        caller = caller_map.get(call.caller_id)
+        receiver = caller_map.get(call.receiver_id)
+        grid_data[caller][day].append(receiver)
+
+    # Get unique callers for rows and days of week for columns
+    unique_callers = sorted(grid_data.keys())
+    unique_days = days_of_week_mapped
+
+    return jsonify({
+        'unique_days': unique_days,
+        'unique_callers': unique_callers,
+        'grid_data': grid_data
+    })
 
 if __name__ == '__main__':
     app.run(host="localhost", port=3000, debug=True)

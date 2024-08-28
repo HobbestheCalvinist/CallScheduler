@@ -4,56 +4,103 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Call Records Grid</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background-color: #f4f4f4;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        td {
-            vertical-align: top;
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
     <h1 style="text-align: center;">Call Records Grid</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Caller</th>
-                {% for day in unique_days %}
-                    <th>{{ day }}</th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for caller in unique_callers %}
-            <tr>
-                <td>{{ caller }}</td>
-                {% for day in unique_days %}
-                    <td>
-                        {% if grid_data[caller][day] %}
-                            {% for receiver in grid_data[caller][day] %}
-                                {{ receiver }}<br>
-                            {% endfor %}
-                        {% else %}
-                            No calls
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
+    
+    <!-- Dropdowns and Load Button -->
+    <div class="controls">
+        <label for="days">Select Number of Days:</label>
+        <select id="days">
+            {% for i in range(1, 8) %}
+                <option value="{{ i }}">{{ i }} {% if i == 1 %}Day{% else %}Days{% endif %}</option>
             {% endfor %}
-        </tbody>
-    </table>
+        </select>
+
+        <label for="members">Select Number of Members:</label>
+        <select id="members">
+            {% for i in range(3, 11) %}
+                <option value="{{ i }}">{{ i }} {% if i == 1 %}Member{% else %}Members{% endif %}</option>
+            {% endfor %}
+        </select>
+
+        <button id="loadTable">Load</button>
+    </div>
+
+    <!-- Initially hidden table -->
+    <div id="tableContainer" class="hidden">
+        <table>
+            <thead>
+                <tr>
+                    <th>Caller</th>
+                    <!-- These will be dynamically inserted later -->
+                </tr>
+            </thead>
+            <tbody>
+                <!-- These will be dynamically inserted later -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        document.getElementById('loadTable').addEventListener('click', function() {
+            const days = document.getElementById('days').value;
+            const members = document.getElementById('members').value;
+
+            console.log('Days:', days);
+            console.log('Members:', members);
+
+            // Show the table container
+            const tableContainer = document.getElementById('tableContainer');
+            tableContainer.classList.remove('hidden');
+
+            // Make a request to the backend to load the data
+            fetch(`/load_table?days=${days}&members=${members}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Populate the table with the data from the server
+                    const thead = document.querySelector('thead tr');
+                    const tbody = document.querySelector('tbody');
+
+                    // Clear existing content
+                    thead.innerHTML = '<th>Caller</th>';
+                    tbody.innerHTML = '';
+
+                    // Populate days in the table header
+                    data.unique_days.forEach(day => {
+                        const th = document.createElement('th');
+                        th.textContent = day;
+                        thead.appendChild(th);
+                    });
+
+                    // Populate callers and their calls
+                    data.unique_callers.forEach(caller => {
+                        const tr = document.createElement('tr');
+                        const tdCaller = document.createElement('td');
+                        tdCaller.textContent = caller;
+                        tr.appendChild(tdCaller);
+
+                        data.unique_days.forEach(day => {
+                            const td = document.createElement('td');
+                            if (data.grid_data[caller] && data.grid_data[caller][day]) {
+                                td.innerHTML = data.grid_data[caller][day].join('<br>');
+                            } else {
+                                td.textContent = '';
+                            }
+                            tr.appendChild(td);
+                        });
+
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(error => console.error('Error loading table data:', error));
+        });
+    </script>
 </body>
 </html>

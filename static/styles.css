@@ -1,0 +1,27 @@
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+th {
+    background-color: #f4f4f4;
+}
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+td {
+    vertical-align: top;
+}
+.controls {
+    margin: 20px 0;
+    text-align: center;
+}
+select, button {
+    padding: 10px;
+    margin: 5px;
+    font-size: 16px;
+}
