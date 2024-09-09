@@ -1,12 +1,12 @@
-class schedulePerson:
+class SchedulePerson:
     
-    def __init__(self, name,days_of_week):
+    def __init__(self, name,days_of_period):
         self.Name = name
         self.makingCallsDict = {}
         self.receivingCallsDict = {}
         self.madeCalls = 0
         self.receivedCalls = 0
-        for day in days_of_week:
+        for day in days_of_period:
             self.makingCallsDict[day] = 0
             self.receivingCallsDict[day] = 0
     

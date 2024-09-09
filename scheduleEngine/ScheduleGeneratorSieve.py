@@ -1,9 +1,10 @@
+import os
 import random, logging, time
 import utilities 
 from config import RunConfig
 from Schedule_Person import SchedulePerson
+from  Schedule_Contraints import *
 from Schedule import Schedule
-
 
 #when initialized, every day gets a fully built out call list 
 def createCombinationCallsDict(names,days):
@@ -22,9 +23,9 @@ def check_EveryOneHasACall_Today(schedule,day):
     else:
         return True
 
-def check_EveryOneHasACall_Week(schedule):
+def check_EveryOneHasACall_ThisPeriod(schedule):
     finishedDays = 0
-    for day in schedule.days_of_week:
+    for day in schedule.days_of_period:
         goodDayInt = int(check_EveryOneHasACall_Today(schedule,day))
         finishedDays=finishedDays+goodDayInt
     return finishedDays
@@ -35,8 +36,8 @@ def buildSchedule(sched, c_list):
     assignments = 1
     while assignments > 0:
         assignments = 0
-        # walk through the week looking for new assigned calls to make
-        for day in sched.days_of_week:
+        # walk through the period looking for new assigned calls to make
+        for day in sched.days_of_period:
             
             #check sieved list of calls to see if we have more options
             availableOptions = c_list[day]
@@ -51,40 +52,16 @@ def buildSchedule(sched, c_list):
                 
                 # Apply each constraint to filter the call list
                 for constraint in sched.constraints:
-                    availableOptions = constraint.apply(sched,c_list, call, day)
+                    constraint.apply(sched,c_list, call, day)
         
-        #TODO, everyone made a call add as a constraint                
-        #metGoals = bool(check_EveryOneHasACall_Week(schedule) == len(days_of_week))
+        
+        #metgoals = bool(sched.getFinishedDays() == len(sched.days_of_period))           
+        #metGoals = bool(check_EveryOneHasACall_ThisPeriod(schedule) == len(days_of_period))
         logging.debug("Made {} assignments this round".format(assignments))
 
     logging.debug("Finished Building Schedule")
 
-
-def filterExtraCalls(schedule):
-    assignments = 9999
-    while (assignments>0):
-        assignments=0
-        for day in schedule.days_of_week:
-            tempSchedule = schedule.copy()
-            highestCount = -9999
-            callNumbers = []
-            for person in schedule.people:
-                p = schedule.getPersonByName[person]
-                interactions = p.getMakingCallsCountDay(day) + p.getReceivingCallsCountDay(day)
-                callNumbers.append(interactions)
-
-            #TODO -> This code isn't updated to the new data structure!
-            list(tempSchedule[day].keys())
-            mostInteractionsPerson = list(schedule.people.keys())[callNumbers.index(max(callNumbers))]
-            if mostInteractionsPerson in tempSchedule[day]:
-                del tempSchedule[day][mostInteractionsPerson]
-
-                if(check_EveryOneHasACall_Today(tempSchedule,day) and len(schedule.days_of_week)==check_EveryOneHasACall_Week(schedule)):
-                    schedule = tempSchedule
-                    schedule.people[mostInteractionsPerson].makingCallsDict[day]-=1
-                    assignments+=1
-
-def run(pNames, daysofweek, rc):
+def run(pNames, daysofperiod, rc):
     logging.basicConfig(level=rc.LogLevel)
     run_Config = rc
     
@@ -94,31 +71,36 @@ def run(pNames, daysofweek, rc):
     smallestDelta = 9999 
     start = time.time()
     
-    folderName =F"People{len(pNames)}-Days{len(daysofweek)}"
+    folderName =F"People{len(pNames)}-Days{len(daysofperiod)}"
     
     while(loopCount<run_Config.MAX_ITERATIONS):
             
-        combinations_names_list = createCombinationCallsDict(pNames,daysofweek) #fully populated list, combinations of all calls
-        sched = Schedule(pNames,daysofweek)
+        combinations_names_list = createCombinationCallsDict(pNames,daysofperiod) #fully populated list, combinations of all calls
+        constraints = [
+            NoRepeatedCallsConstraint(),
+            NoReverseCallSameDayConstraint(),
+            MaxCallsPerDayConstraint(max_made_calls_per_day=2),
+            MaxReceiverPerDayConstraint(max_received_calls_per_day=2)
+        ]
+        sched = Schedule(pNames,daysofperiod,constraints)
         
         buildSchedule(sched,combinations_names_list)
         
-        filterExtraCalls(sched,combinations_names_list)
+        outputResults=True
         if run_Config.doesEveryoneNeedCall:
             outputResults=False
-            finishedDays = check_EveryOneHasACall_Week(sched)
-            if finishedDays==len(sched.days_of_week):
+            finishedDays = check_EveryOneHasACall_ThisPeriod(sched)
+            if finishedDays==len(sched.days_of_period):
                 outputResults=True
-        else:
-            outputResults=True
-        
+            
         if outputResults:
-            sumTotalCalls = getTotalCallsThisWeek(people)
-            currentDelta = getDeltaCallsThisWeek(people)
+            sumTotalCalls = sched.getTotalCallsThisperiod()
+            currentDelta = sched.getDeltaCallsThisperiod()
             
             if (sumTotalCalls<=fewestCalls or currentDelta<=smallestDelta ):
                 filename = f"{folderName}\calls-{sumTotalCalls}-delta-{currentDelta}.csv"
-                utilities.output_schedule_to_csv(sched, filename ,sched.days_of_week,sched.peoples_names)
+                fullPath = os.path.join(run_Config.OutputDirectory,filename)
+                utilities.output_schedule_to_csv(sched, fullPath ,sched.days_of_period,sched.peoples_names)
 
                 if (sumTotalCalls<fewestCalls):
                     fewestCalls = sumTotalCalls

@@ -1,4 +1,6 @@
 
+''' Contraints are ways to narrow down the 
+'''
 class Constraint:
     def apply(self, schedule, call_list , call, day):
         """
@@ -10,46 +12,66 @@ class Constraint:
 class NoRepeatedCallsConstraint(Constraint):
     def apply(self, schedule,call_list , call, day):
         """
-        Removes the call pair from the list if they have already interacted this week.
+        Removes the call pair from the list if they have already interacted this period.
         """
         for day in call_list.keys():
-            callList = call_list[day].copy()
+            modList=None
+            modified = False
+            
             if call in call_list[day]:
-                callList.remove(call)
-            call_list[day] = callList
+                if modList is None: #copying memory objects is expensive, so optimize when we copy
+                    modList = call_list[day].copy()
+                
+                modList.remove(call)
+                modified =True
+
+            #assign the modified call list back into the object
+            if modified == True:
+                call_list[day] = modList
 
 class NoReverseCallSameDayConstraint(Constraint):
     def apply(self, schedule, call_list , call, day):
-        new_list = call_list.copy()
-        for call in call_list[day]:
-            caller, receiver = call
-            if (receiver.Name, caller.Name) in new_list:
-                new_list.remove((receiver.Name, caller.Name))
-        return new_list
+     
+        caller, receiver = call
+        if (receiver, caller) in call_list[day]:       
+            dayListCalls = call_list[day]
+            dayListCalls.remove((receiver, caller))
+
 
 class MaxCallsPerDayConstraint(Constraint):
     def __init__(self, max_made_calls_per_day):
         self.max_made_calls_per_day = max_made_calls_per_day
 
     def apply(self, schedule, call_list , call, day):
-        new_list = call_list.copy()
+        modList = None
+        modified = False
+
         for call in call_list[day]:
-            caller = call[0] #TODO, this used to call out to the "People" object. Might need to fix
+            caller = schedule.getPersonByName(call[0])
             if caller.getMakingCallsCountDay(day) >= self.max_made_calls_per_day:
-                new_list.remove(call)
-        return new_list
+                if modList is None: #copying memory objects is expensive, so optimize when we copy
+                    modList=call_list[day].copy()
+                modList.remove(call)
+                modified = True
+        
+        if modified == True:
+            call_list[day] = modList
 
 class MaxReceiverPerDayConstraint(Constraint):
     def __init__(self, max_received_calls_per_day):
         self.max_received_calls_per_day = max_received_calls_per_day
 
     def apply(self, schedule, call_list , call, day):
-        newlist = call_list.copy()
-        caller = call[0]
-        receiver = call[1]
+        modList = None
+        modified = False
+
         for currCall in call_list[day]:
-            if currCall[0] == receiver.Name and currCall[1] == caller.Name:
-                newlist.remove(call)
-                
-        return newlist
+            if currCall[0] == call[0] and currCall[1] == call[1]:
+                if modList is None: #copying memory objects is expensive, so optimize when we copy
+                    call_list[day].copy()
+                modList.remove(call)
+                modified = True
+        
+        if modified == True:
+            call_list[day] = modList
 
