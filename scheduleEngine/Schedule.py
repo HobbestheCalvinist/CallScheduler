@@ -15,17 +15,29 @@ class Schedule:
         ### i.e. DayDictCallsofNames[Monday][Name] = Name2
 
 
-    def getTotalCallsThisperiod(self):
+    def calculateTotalCallsThisPeriod(self):
         total = 0
         for p in self.people.values():
                     total+=p.getMakingCallsCount()
         return total
 
-    def getDeltaCallsThisperiod(self):
+    def calculateDeltaCallsThisPeriod(self):
         delta=0
         for p in self.people.values():
                     delta= delta+ abs(p.getMakingCallsCount()-p.getReceivingCallsCount())
         return delta
+    
+    def calculateNoInteractionDaysThisPeriod(self):
+        finishedDays=0
+
+        for day in self.days_of_period:
+            goodDayInt = int(self.checkEveryoneHasInteractionToday(day))
+            finishedDays=finishedDays+goodDayInt
+        result = len(self.days_of_period) - finishedDays
+
+        if result<0:
+             breakhere=0
+        return result
     
     def getPersonByName(self,name):
         p = self.people[name]
@@ -40,19 +52,17 @@ class Schedule:
         
         self.DayDictCallsofNames[day][callerName] = receiverName
 
-
-    def check_EveryOneHasACall_Today (self,day):
-          dayOfCalls = self.DayDictCallsofNames[day]
-          return 0
+    def checkEveryoneHasInteractionToday (self,day):
+          numInteractionsToday = 0
+          for p in self.people.values():
+            if p.hasInteractionToday(day):
+                 numInteractionsToday+=1
+            val = bool(len(self.people)-numInteractionsToday)
+          #returns the opposite of calculation, because we want everyone to interact, val will be 0 = false
+          return not val
     
 
-    def getFinishedDays(self):
-        finishedDays=0
-        for day in self.days_of_period:
-            goodDayInt = int(self.check_EveryOneHasACall_Today(day))
-            
-            finishedDays=finishedDays+goodDayInt
-        return finishedDays
+
     
 
     

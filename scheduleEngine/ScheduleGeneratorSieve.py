@@ -1,5 +1,6 @@
 import os
 import random, logging, time
+from Schedule_Run_Rules import StatTrack
 import utilities 
 from config import RunConfig
 from Schedule_Person import SchedulePerson
@@ -47,10 +48,7 @@ def buildSchedule(sched, c_list):
                 sched.makeCall(day,call[0],call[1])
                 assignments += 1
                 
-                # sieve out the possibility of this exact call
-                c_list[day].remove(call)
-                
-                # Apply each constraint to filter the call list
+                # Apply each constraint to filter the call list options
                 for constraint in sched.constraints:
                     constraint.apply(sched,c_list, call, day)
         
@@ -63,56 +61,45 @@ def buildSchedule(sched, c_list):
 
 def run(pNames, daysofperiod, rc):
     logging.basicConfig(level=rc.LogLevel)
-    run_Config = rc
     
-    # Generate the schedule
-    loopCount = 0
-    fewestCalls = 9999
-    smallestDelta = 9999 
-    start = time.time()
-    
+    s_track = StatTrack(rc)
     folderName =F"People{len(pNames)}-Days{len(daysofperiod)}"
     
-    while(loopCount<run_Config.MAX_ITERATIONS):
+    while(s_track.loopCount<rc.MAX_ITERATIONS):
             
-        combinations_names_list = createCombinationCallsDict(pNames,daysofperiod) #fully populated list, combinations of all calls
+        #fully populated list, combinations of all calls resets every loop
+        combinations_names_list = createCombinationCallsDict(pNames,daysofperiod) 
         constraints = [
             NoRepeatedCallsConstraint(),
             NoReverseCallSameDayConstraint(),
-            MaxCallsPerDayConstraint(max_made_calls_per_day=2),
-            MaxReceiverPerDayConstraint(max_received_calls_per_day=2)
+            MaxCallsPerDayConstraint(rc.max_made_calls_per_day),
+            MaxReceiverPerDayConstraint(rc.max_received_calls_per_day)
+            
         ]
+
         sched = Schedule(pNames,daysofperiod,constraints)
-        
         buildSchedule(sched,combinations_names_list)
         
         outputResults=True
-        if run_Config.doesEveryoneNeedCall:
-            outputResults=False
-            finishedDays = check_EveryOneHasACall_ThisPeriod(sched)
-            if finishedDays==len(sched.days_of_period):
-                outputResults=True
-            
-        if outputResults:
-            sumTotalCalls = sched.getTotalCallsThisperiod()
-            currentDelta = sched.getDeltaCallsThisperiod()
-            
-            if (sumTotalCalls<=fewestCalls or currentDelta<=smallestDelta ):
-                filename = f"{folderName}\calls-{sumTotalCalls}-delta-{currentDelta}.csv"
-                fullPath = os.path.join(run_Config.OutputDirectory,filename)
-                utilities.output_schedule_to_csv(sched, fullPath ,sched.days_of_period,sched.peoples_names)
+        if rc.doesEveryoneNeedCall:
+            outputResults= bool(len(sched.days_of_period) == check_EveryOneHasACall_ThisPeriod(sched))  
 
-                if (sumTotalCalls<fewestCalls):
-                    fewestCalls = sumTotalCalls
-                    logging.info(f"schedule_output{loopCount} has {sumTotalCalls} total calls")
-                if (currentDelta<smallestDelta):
-                    smallestDelta = currentDelta
-                    logging.info(f"schedule_output{loopCount} has {smallestDelta} delta size")
-        
-        loopCount+=1
-        if loopCount % 10000 ==0:
-            end = time.time()
-            duration = round(end - start,2)
-            # time left = how many loop "chunks" multiplied by how long each "chunk" takes
-            timeLeft = ((run_Config.MAX_ITERATIONS-loopCount)/loopCount)*duration/60
-            print(str(loopCount) + " -- minutes left:" + str(timeLeft))
+        #TODO -> check that other larger rules to be applied here?
+        if outputResults:
+    
+            s_track.currentTotalCalls = sched.calculateTotalCallsThisPeriod()
+            s_track.currentDelta = sched.calculateDeltaCallsThisPeriod()
+            s_track.currentNoCall = sched.calculateNoInteractionDaysThisPeriod()
+            
+            #there is a new lowest stat, we can output the schedule
+            if s_track.checkAnyStatChangeForLower():
+
+                filename = os.path.join(folderName,f"Missing-{s_track.currentNoCall}-calls-{s_track.currentTotalCalls}-delta-{s_track.currentDelta}.csv")
+                fullPath = os.path.join(rc.OutputDirectory,filename)
+                utilities.output_schedule_to_csv(sched, fullPath)
+                logging.info(f"schedule_output{s_track.loopCount} has output csv -- {filename}")
+                s_track.updateLowestValues()
+              
+        s_track.loopCount+=1
+        if s_track.loopCount % 10000 ==0:
+            print(s_track.getCurrentElapsedTime())

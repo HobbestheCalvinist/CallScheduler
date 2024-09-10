@@ -46,14 +46,16 @@ class MaxCallsPerDayConstraint(Constraint):
         modList = None
         modified = False
 
-        for call in call_list[day]:
-            caller = schedule.getPersonByName(call[0])
-            if caller.getMakingCallsCountDay(day) >= self.max_made_calls_per_day:
-                if modList is None: #copying memory objects is expensive, so optimize when we copy
-                    modList=call_list[day].copy()
-                modList.remove(call)
-                modified = True
-        
+        caller = schedule.getPersonByName(call[0])
+        if caller.getMakingCallsCountDay(day) >= self.max_made_calls_per_day:
+            for currCall in call_list[day]:
+                #remove any interaction where this person is the caller
+                if currCall[0] == call[0]:
+                    if modList is None: #copying memory objects is expensive, so optimize when we copy
+                        modList=call_list[day].copy()
+                    modList.remove(currCall)
+                    modified = True
+            
         if modified == True:
             call_list[day] = modList
 
@@ -65,13 +67,16 @@ class MaxReceiverPerDayConstraint(Constraint):
         modList = None
         modified = False
 
-        for currCall in call_list[day]:
-            if currCall[0] == call[0] and currCall[1] == call[1]:
-                if modList is None: #copying memory objects is expensive, so optimize when we copy
-                    call_list[day].copy()
-                modList.remove(call)
-                modified = True
-        
+        reciever = schedule.getPersonByName(call[1])
+        if reciever.getReceivingCallsCountDay(day) >= self.max_received_calls_per_day:
+            for currCall in call_list[day]:
+                #remove any interaction where this person is the caller
+                if currCall[1] == call[1]:
+                    if modList is None: #copying memory objects is expensive, so optimize when we copy
+                        modList=call_list[day].copy()
+                    modList.remove(currCall)
+                    modified = True
+            
         if modified == True:
             call_list[day] = modList
 

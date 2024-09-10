@@ -7,25 +7,31 @@ def create_directory_for_file(file_path):
         os.makedirs(directory)
         print(f"Directory '{directory}' created successfully.")
         return False
-    else:
+    
+    elif os.path.exists(file_path):
         return True
+    
+    else:
+        return False
 
-def output_schedule_to_csv(schedule, fullFilePath,days_of_period,peoples_names):
+def output_schedule_to_csv(schedule, fullFilePath):
     alreadyExists=create_directory_for_file(fullFilePath)
 
     if not alreadyExists:
         with open(fullFilePath, mode='w', newline='') as file:
             writer = csv.writer(file)
-            header = ['Caller/Receiver'] + days_of_period
+            header = ['Caller/Receiver'] + schedule.days_of_period
             writer.writerow(header)
 
-            for person in peoples_names:
+            for person in schedule.peoples_names:
                 row = [person]
-                for day in days_of_period:
+                
+                for day in schedule.days_of_period:
                     row.append(schedule.DayDictCallsofNames[day].get(person, ''))
                 writer.writerow(row)
     else:
         logging.debug(f"{fullFilePath} already existed")
+    
 
 def output_schedule_to_LoggingConsole(schedule,days_of_period):
     for day in days_of_period:

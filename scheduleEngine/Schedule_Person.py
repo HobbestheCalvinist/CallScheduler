@@ -19,7 +19,11 @@ class SchedulePerson:
     def receiveCall(self,day):
         self.receivingCallsDict[day]+=1
         self.receivedCalls +=1
-        
+
+    def hasInteractionToday(self,day):
+        interaction = bool(self.getMakingCallsCountDay(day) + self.getReceivingCallsCountDay(day))
+        return interaction
+    
     def getMakingCallsCount(self):
         return self.madeCalls
 
