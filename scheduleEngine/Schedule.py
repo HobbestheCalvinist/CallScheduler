@@ -52,7 +52,7 @@ class Schedule:
         
         self.DayDictCallsofNames[day][callerName] = receiverName
 
-    def checkEveryoneHasInteractionToday (self,day):
+    def checkEveryoneHasInteractionToday(self,day):
           numInteractionsToday = 0
           for p in self.people.values():
             if p.hasInteractionToday(day):

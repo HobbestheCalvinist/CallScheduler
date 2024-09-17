@@ -37,7 +37,6 @@ class NoReverseCallSameDayConstraint(Constraint):
             dayListCalls = call_list[day]
             dayListCalls.remove((receiver, caller))
 
-
 class MaxCallsPerDayConstraint(Constraint):
     def __init__(self, max_made_calls_per_day):
         self.max_made_calls_per_day = max_made_calls_per_day
@@ -70,7 +69,7 @@ class MaxReceiverPerDayConstraint(Constraint):
         reciever = schedule.getPersonByName(call[1])
         if reciever.getReceivingCallsCountDay(day) >= self.max_received_calls_per_day:
             for currCall in call_list[day]:
-                #remove any interaction where this person is the caller
+                #remove any interaction where this person is the reciever
                 if currCall[1] == call[1]:
                     if modList is None: #copying memory objects is expensive, so optimize when we copy
                         modList=call_list[day].copy()
@@ -80,3 +79,54 @@ class MaxReceiverPerDayConstraint(Constraint):
         if modified == True:
             call_list[day] = modList
 
+class MaxCallsPerPeriodConstraint(Constraint):
+    def __init__(self, max_made_calls_per_period):
+        self.max_made_calls_per_period = max_made_calls_per_period
+
+    def apply(self, schedule, call_list , call, day):
+        
+        caller = schedule.getPersonByName(call[0])
+        if caller.getMakingCallsCount() >= self.max_made_calls_per_period:
+            for d in schedule.days_of_period:
+                modified = False
+                modList = None
+                for currCall in call_list[d]:
+                    #remove any interaction where this person is the caller
+                    if currCall[0] == call[0]:
+                        if modList is None: #copying memory objects is expensive, so optimize when we copy
+                            modList=call_list[d].copy()
+                        modList.remove(currCall)
+                        modified = True
+                
+                if modified == True:
+                    call_list[d] = modList
+
+class MaxReceiverPerPeriodConstraint(Constraint):
+    def __init__(self, max_received_calls_per_period):
+        self.max_received_calls_per_period = max_received_calls_per_period
+
+    def apply(self, schedule, call_list , call, day):
+        
+        reciever = schedule.getPersonByName(call[1])
+        if reciever.getReceivingCallsCount() >= self.max_received_calls_per_period:
+            for d in schedule.days_of_period:
+                modified = False
+                modList = None
+                for currCall in call_list[d]:
+                    #remove any interaction where this person is the reciever
+                    if currCall[1] == call[1]:
+                        if modList is None: #copying memory objects is expensive, so optimize when we copy
+                            modList=call_list[d].copy()
+                        modList.remove(currCall)
+                        modified = True
+                
+                if modified == True:
+                    call_list[d] = modList
+
+class FullInteractionDayConstraint(Constraint):
+
+    def apply(self, schedule, call_list , call, day):
+        if(schedule.checkEveryoneHasInteractionToday(day)):
+            call_list[day]=[]           
+
+        

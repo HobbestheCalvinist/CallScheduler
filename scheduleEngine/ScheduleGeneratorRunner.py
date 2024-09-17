@@ -2,6 +2,8 @@ import ScheduleGeneratorSieve
 from config import RunConfig
 import cProfile
 
+from Schedule_Contraints import *
+
 
 
 def populateList(Prefix,endNum):
@@ -15,6 +17,30 @@ def populateNames(Prefix,endNum):
     for l in range(1,endNum+1):
         myList.append(Prefix + "_" + chr(97+l))
     return myList
+
+def buildConstraintsSet1(rc):
+    constraints = [
+            NoRepeatedCallsConstraint(),
+            NoReverseCallSameDayConstraint(),
+            MaxCallsPerDayConstraint(rc.max_made_calls_per_day),
+            MaxReceiverPerDayConstraint(rc.max_received_calls_per_day)
+            
+        ]
+    
+    return constraints
+
+def buildConstraintSet2(rc):
+    constraints = [
+            NoRepeatedCallsConstraint(),
+            NoReverseCallSameDayConstraint(),
+            MaxCallsPerDayConstraint(rc.max_made_calls_per_day),
+            MaxReceiverPerDayConstraint(rc.max_received_calls_per_day),
+            MaxCallsPerPeriodConstraint(rc.max_made_calls_per_period),
+            MaxReceiverPerPeriodConstraint(rc.max_received_calls_per_period),
+            FullInteractionDayConstraint()
+        ]
+    
+    return constraints
 
 
 def runScheduleWithProfiler(DAYS_OF_PERIOD,PEOPLES_NAMES):
@@ -38,7 +64,7 @@ def runSchedule(DAYS_OF_PERIOD,PEOPLES_NAMES):
     rc.max_received_calls_per_period = len(DAYS_OF_PERIOD)-1
     #rc.max_made_calls_per_period = 3
     #rc.max_received_calls_per_period=5 
-    ScheduleGeneratorSieve.run(PEOPLES_NAMES,DAYS_OF_PERIOD,rc)
+    ScheduleGeneratorSieve.run(PEOPLES_NAMES,DAYS_OF_PERIOD,rc,buildConstraintSet2(rc))
         
     print(f"people{len(PEOPLES_NAMES)} - days{len(DAYS_OF_PERIOD)}")
 

@@ -1,10 +1,7 @@
-import os
-import random, logging, time
+import os, random, logging
 from Schedule_Run_Rules import StatTrack
 import utilities 
 from config import RunConfig
-from Schedule_Person import SchedulePerson
-from  Schedule_Contraints import *
 from Schedule import Schedule
 
 #when initialized, every day gets a fully built out call list 
@@ -14,23 +11,6 @@ def createCombinationCallsDict(names,days):
     for day in days:
         callDict[day] = combination_list.copy()
     return callDict
-  
-def check_EveryOneHasACall_Today(schedule,day):
-    a = list(schedule[day].keys())
-    b = list(schedule[day].values())
-    unique = list(set(a + b))
-    if len(unique) != len(schedule.peoples_names):
-        return False
-    else:
-        return True
-
-def check_EveryOneHasACall_ThisPeriod(schedule):
-    finishedDays = 0
-    for day in schedule.days_of_period:
-        goodDayInt = int(check_EveryOneHasACall_Today(schedule,day))
-        finishedDays=finishedDays+goodDayInt
-    return finishedDays
-
 
 def buildSchedule(sched, c_list):
 
@@ -51,15 +31,12 @@ def buildSchedule(sched, c_list):
                 # Apply each constraint to filter the call list options
                 for constraint in sched.constraints:
                     constraint.apply(sched,c_list, call, day)
-        
-        
-        #metgoals = bool(sched.getFinishedDays() == len(sched.days_of_period))           
-        #metGoals = bool(check_EveryOneHasACall_ThisPeriod(schedule) == len(days_of_period))
+
         logging.debug("Made {} assignments this round".format(assignments))
 
     logging.debug("Finished Building Schedule")
 
-def run(pNames, daysofperiod, rc):
+def run(pNames, daysofperiod, rc, constraints):
     logging.basicConfig(level=rc.LogLevel)
     
     s_track = StatTrack(rc)
@@ -69,20 +46,10 @@ def run(pNames, daysofperiod, rc):
             
         #fully populated list, combinations of all calls resets every loop
         combinations_names_list = createCombinationCallsDict(pNames,daysofperiod) 
-        constraints = [
-            NoRepeatedCallsConstraint(),
-            NoReverseCallSameDayConstraint(),
-            MaxCallsPerDayConstraint(rc.max_made_calls_per_day),
-            MaxReceiverPerDayConstraint(rc.max_received_calls_per_day)
-            
-        ]
-
         sched = Schedule(pNames,daysofperiod,constraints)
         buildSchedule(sched,combinations_names_list)
         
         outputResults=True
-        if rc.doesEveryoneNeedCall:
-            outputResults= bool(len(sched.days_of_period) == check_EveryOneHasACall_ThisPeriod(sched))  
 
         #TODO -> check that other larger rules to be applied here?
         if outputResults:
@@ -96,9 +63,21 @@ def run(pNames, daysofperiod, rc):
 
                 filename = os.path.join(folderName,f"Missing-{s_track.currentNoCall}-calls-{s_track.currentTotalCalls}-delta-{s_track.currentDelta}.csv")
                 fullPath = os.path.join(rc.OutputDirectory,filename)
-                utilities.output_schedule_to_csv(sched, fullPath)
-                logging.info(f"schedule_output{s_track.loopCount} has output csv -- {filename}")
+                
+                if rc.doesEveryoneNeedCall: 
+                    if s_track.currentNoCall == 0:
+                        utilities.output_schedule_to_csv(sched, fullPath)
+                        logging.info(f"schedule_output{s_track.loopCount} has output csv -- {filename}")
+                    else:
+                        logging.info(f"schedule_output {s_track.loopCount} NOT CREATING -- {filename}")    
+                else:                
+                    utilities.output_schedule_to_csv(sched, fullPath)
+                    logging.info(f"schedule_output{s_track.loopCount} has output csv -- {filename}")
+                
+
                 s_track.updateLowestValues()
+
+
               
         s_track.loopCount+=1
         if s_track.loopCount % 10000 ==0:
